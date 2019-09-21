@@ -242,21 +242,41 @@ public class TestKeyAgreement {
         }
     }
 
-    private void offerKeyHolder(Queue<KeyHolder> queue, String e1Id, KeyHolder e2, AtomicInteger count) {
-        KeyHolder tmp = new KeyHolder();
-        SortedSet<String> newId = e2.id.stream().collect(Collectors.toCollection(TreeSet::new));
-        newId.add(e1Id);
-        tmp.id = newId;
-        if (!mapComposedPublicKey.containsKey(newId)) {
-            count.getAndAdd(1);
-            try {
-                byte[] pubKeyBin = mapComposedPublicKey.get(e2.id);
-                byte[] joinPubKeyBin = joinGroup(e1Id, pubKeyBin, e2.id.toArray(new String[e2.id.size()]));
-                mapComposedPublicKey.put(newId, joinPubKeyBin);
-            } catch (Exception e) {
-                logger.error("", e);
-            }
-            queue.offer(tmp);
+    private void accumulatePublicKey(SortedSet<String> fromIds, SortedSet<String> toIds, AtomicInteger count) {
+        byte[] publicKeyBin1 = mapComposedPublicKey.get(toIds);
+        if (publicKeyBin1 != null) {
+            Object[] newKh = fromIds.stream().map(e -> {
+                Object[] rs = null;
+                byte[] publicKeyBin = mapComposedPublicKey.get(Stream.of(e).collect(Collectors.toCollection(TreeSet::new)));
+                if (publicKeyBin != null) {
+                    rs = new Object[]{
+                            Stream.of(e).collect(Collectors.toCollection(TreeSet::new)),
+                            publicKeyBin};
+                }
+                return rs;
+            }).reduce(new Object[]{toIds, publicKeyBin1}, (v1, v2) -> {
+                Object[] rs = null;
+                if (v1 != null && v2 != null) {
+                    SortedSet<String> accumulatedId = new TreeSet<>();
+                    SortedSet<String> idsFrom = (SortedSet<String>) v2[0];
+                    SortedSet<String> idsTo = (SortedSet<String>) v1[0];
+                    byte[] pubKeyBinTo = (byte[]) v1[1];
+                    String[] idsToStr = idsTo.toArray(new String[idsTo.size()]);
+                    try {
+                        count.getAndIncrement();
+                        accumulatedId.addAll(idsFrom);
+                        accumulatedId.addAll(idsTo);
+                        byte[] accumulatedKeyBin = joinGroup(idsFrom.first(), pubKeyBinTo, idsToStr);
+                        rs = new Object[]{accumulatedId, accumulatedKeyBin};
+                    } catch (Exception e) {
+                        logger.info("", e);
+                    }
+                }
+                return rs;
+            });
+            SortedSet<String> newId = (SortedSet<String>) newKh[0];
+            byte[] newKey = (byte[]) newKh[1];
+            mapComposedPublicKey.put(newId, newKey);
         }
     }
 
@@ -272,9 +292,27 @@ public class TestKeyAgreement {
             if (e1 == null) {
                 break;
             }
-            KeyHolder e2 = queue.peek();
-            if (e2 != null && e1.id.size() != ids.length - 1) {
-                e2.id.stream().filter(e -> !e1.id.contains(e)).forEach(e -> offerKeyHolder(queue, e, e1, count));
+            KeyHolder e2 = queue.poll();
+            KeyHolder composeKh = new KeyHolder();
+            if (e1.id.size() + e2.id.size() < ids.length) {
+                // normal key
+                SortedSet<String> composeKey = e2.id.stream().collect(Collectors.toCollection(TreeSet::new));
+                composeKey.addAll(e1.id);
+                accumulatePublicKey(e2.id, e1.id, count);
+                composeKh.id = composeKey;
+                queue.add(composeKh);
+            } else {
+                // before final key
+                e1.id.stream().forEach(e -> {
+                    SortedSet<String> fromKey = e1.id.stream().filter(elem -> !e.equals(elem))
+                            .collect(Collectors.toCollection(TreeSet::new));
+                    accumulatePublicKey(fromKey, e2.id, count);
+                });
+                e2.id.stream().forEach(e -> {
+                    SortedSet<String> fromKey = e2.id.stream().filter(elem -> !e.equals(elem))
+                            .collect(Collectors.toCollection(TreeSet::new));
+                    accumulatePublicKey(fromKey, e1.id, count);
+                });
             }
         }
         queue.clear();
