@@ -56,7 +56,21 @@ public class TestHashFunc {
         logger.info("HMAC SHA-512 hash:\t" + Hex.toHexString(hmacSha512.doFinal(dataBin)));
     }
 
-    protected void testLengthExtensionAttack() {
+    protected void testLengthExtensionAttack() throws NoSuchAlgorithmException {
+//        String key = "";
+        String originData = "secret";
+        String deltaData = "append";
+        String hashingOriginData = originData;
+        String hashingOriginDeltaData = hashingOriginData + deltaData;
+        MessageDigest mdSha256 = MessageDigest.getInstance("SHA1");
+        byte[] originHashed = mdSha256.digest(hashingOriginData.getBytes());
+        byte[] originDeltaHashed = mdSha256.digest(hashingOriginData.getBytes());
+        logger.info("Origin hashed:\t\t\t" + Hex.toHexString(originHashed));
+        logger.info("Origin delta hashed:\t" + Hex.toHexString(originDeltaHashed));
+        // attack
+        byte[] deltaAttackBin = {};
+
+
     }
 
     public static void main(String[] args) throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException, InvalidKeySpecException, NoSuchProviderException {
