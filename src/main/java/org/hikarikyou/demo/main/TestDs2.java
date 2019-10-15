@@ -30,12 +30,15 @@ public class TestDs2 {
 
     KeyStore keyStoreECDSA = null;
     KeyStore keyStoreRSA = null;
+    KeyStore keyStoreRSAPSS = null;
     char[] passwd = "123456".toCharArray();
 
     PrivateKey ecdsaPrivateKey = null;
     Certificate ecdsaCertificate = null;
     PrivateKey rsaPrivateKey = null;
     Certificate rsaCertificate = null;
+    PrivateKey rsaPssPrivateKey = null;
+    Certificate rsaPssCertificate = null;
 
     static final String sampleData = "1234567890";
 
@@ -60,14 +63,33 @@ public class TestDs2 {
         }
         return keyStoreRSA;
     }
+    protected KeyStore getKeyStoreRSAPSS() throws NoSuchProviderException, KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException {
+        if (keyStoreRSAPSS == null) {
+            Provider provider = new BouncyCastleProvider();
+            Security.addProvider(provider);
+//            Security.insertProviderAt(provider, 1);
+            keyStoreRSAPSS = KeyStore.getInstance("PKCS12", "BC");
+            keyStoreRSAPSS.load(new FileInputStream("key/ks-rsa-pss.pfx"), passwd);
+        }
+        return keyStoreRSAPSS;
+    }
 
     protected void init() throws NoSuchProviderException, KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, UnrecoverableKeyException {
-        KeyStore ks = getKeyStoreECDSA();
-        Enumeration<String> alias = ks.aliases();
+        Enumeration<String> alias = null;
+        KeyStore ks = null;
+        ks = getKeyStoreECDSA();
+        alias = ks.aliases();
         while (alias.hasMoreElements()) {
             String ali = alias.nextElement();
             ecdsaPrivateKey = (PrivateKey) getKeyStoreECDSA().getKey(ali, passwd);
             ecdsaCertificate = getKeyStoreECDSA().getCertificate(ali);
+        }
+        ks = getKeyStoreRSAPSS();
+        alias = ks.aliases();
+        while (alias.hasMoreElements()) {
+            String ali = alias.nextElement();
+            rsaPssPrivateKey = (PrivateKey) getKeyStoreRSAPSS().getKey(ali, passwd);
+            rsaPssCertificate = getKeyStoreRSAPSS().getCertificate(ali);
         }
         ks = getKeyStoreRSA();
         alias = ks.aliases();
@@ -140,17 +162,17 @@ public class TestDs2 {
         PSSParameterSpec pssParameterSpec = null;
 
         signature = Signature.getInstance(alg);
-        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
-        signature.setParameter(pssParameterSpec);
-        signature.initSign(rsaPrivateKey);
+//        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
+//        signature.setParameter(pssParameterSpec);
+        signature.initSign(rsaPssPrivateKey);
         byte[] dataToSign = sampleData.getBytes("utf-8");
         signature.update(dataToSign);
         byte[] signedData = signature.sign();
 
         signature = Signature.getInstance(alg);
-        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
-        signature.setParameter(pssParameterSpec);
-        signature.initVerify(rsaCertificate);
+//        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
+//        signature.setParameter(pssParameterSpec);
+        signature.initVerify(rsaPssCertificate);
         signature.update(dataToSign);
         boolean verifyResult = signature.verify(signedData);
 
