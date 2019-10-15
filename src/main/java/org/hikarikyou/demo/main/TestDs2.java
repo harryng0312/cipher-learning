@@ -18,8 +18,10 @@ import java.io.UnsupportedEncodingException;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.MGF1ParameterSpec;
+import java.security.spec.PSSParameterSpec;
 import java.util.Base64;
-import java.util.Calendar;
 import java.util.Enumeration;
 
 public class TestDs2 {
@@ -76,7 +78,7 @@ public class TestDs2 {
         }
     }
 
-    protected byte[] getSha256(byte[] data) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    protected byte[] getSha256(byte[] data) throws NoSuchAlgorithmException {
         MessageDigest messageDigest = MessageDigest.getInstance("SHA256");
         messageDigest.update(data);
         byte[] digest = messageDigest.digest();
@@ -107,28 +109,65 @@ public class TestDs2 {
         rsaSha256Signature.update(sampleData.getBytes());
         byte[] signed2 = rsaSha256Signature.sign();
 
-        logger.info("RSA Cipher:\t\t\t\t" + Base64.getEncoder().encodeToString(signed0));
+        logger.info("RSA Cipher:\t\t\t\t\t" + Base64.getEncoder().encodeToString(signed0));
         logger.info("RSA Signature:\t\t\t\t" + Base64.getEncoder().encodeToString(signed));
         logger.info("SHA256WithRSA Signature:\t" + Base64.getEncoder().encodeToString(signed2));
     }
 
-    protected void signSha256WithRsa() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
+    protected void signVerifySha256WithRsa() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
         Signature signature = Signature.getInstance("SHA256WithRSA");
         signature.initSign(rsaPrivateKey);
         byte[] dataToSign = sampleData.getBytes("utf-8");
-        long startTime = Calendar.getInstance().getTime().getTime();
         signature.update(dataToSign);
         byte[] signedData = signature.sign();
-        long endTime = Calendar.getInstance().getTime().getTime();
-        logger.info("SHA256WithRSA Signature:" + Base64.getEncoder().encodeToString(signedData) + "\nTime:" + (endTime - startTime));
+        signature = Signature.getInstance("SHA256WithRSA");
+        signature.initVerify(rsaCertificate);
+        signature.update(dataToSign);
+        boolean verifyResult = signature.verify(signedData);
+
+        logger.info("SHA256WithRSA Len:\t\t\t" + signedData.length);
+        logger.info("SHA256WithRSA Signature:" + Base64.getEncoder().encodeToString(signedData));
+        logger.info("SHA256WithRSA Verify:\t\t" + verifyResult);
+    }
+
+    protected void signVerifyRsaPss() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
+        final String alg = "SHA256WithRSA/PSS"; // "RSASSA-PSS";
+        final MGF1ParameterSpec mgf1ParameterSpec = MGF1ParameterSpec.SHA256;
+        final String mgfName = "MGF1";
+        final int saltLen = 32;
+        final int trailerField = 1;
+        Signature signature = null;
+        AlgorithmParameterSpec pssParameterSpec = null;
+
+        signature = Signature.getInstance(alg);
+        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
+        signature.setParameter(pssParameterSpec);
+        signature.initSign(rsaPrivateKey);
+        byte[] dataToSign = sampleData.getBytes("utf-8");
+        signature.update(dataToSign);
+        byte[] signedData = signature.sign();
+
+        signature = Signature.getInstance(alg);
+        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
+        signature.setParameter(pssParameterSpec);
+        signature.initVerify(rsaCertificate);
+        signature.update(dataToSign);
+        boolean verifyResult = signature.verify(signedData);
+
+        logger.info("SHA256WithRSA/PSS Len:\t\t" + signedData.length);
+        logger.info("SHA256WithRSA/PSS Signature:" + Base64.getEncoder().encodeToString(signedData));
+        logger.info("SHA256WithRSA/PSS Verify:\t" + verifyResult);
     }
 
     public static void main(String[] args) throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
         TestDs2 testDs2 = new TestDs2();
         testDs2.init();
+//        logger.info("==========");
+//        testDs2.signRsa();
         logger.info("==========");
-        testDs2.signSha256WithRsa();
+        testDs2.signVerifySha256WithRsa();
         logger.info("==========");
-        testDs2.signRsa();
+        testDs2.signVerifyRsaPss();
+        logger.info("==========");
     }
 }
