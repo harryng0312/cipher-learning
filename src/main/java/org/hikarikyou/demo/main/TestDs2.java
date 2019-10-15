@@ -137,6 +137,22 @@ public class TestDs2 {
         logger.info("SHA256WithRSA Signature:\t" + Base64.getEncoder().encodeToString(signed2));
     }
 
+    protected void signVerifySha256Ecdsa() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
+        Signature signature = Signature.getInstance("SHA256WithECDSA");
+        signature.initSign(ecdsaPrivateKey);
+        byte[] dataToSign = sampleData.getBytes("utf-8");
+        signature.update(dataToSign);
+        byte[] signedData = signature.sign();
+        signature = Signature.getInstance("SHA256WithECDSA");
+        signature.initVerify(ecdsaCertificate);
+        signature.update(dataToSign);
+        boolean verifyResult = signature.verify(signedData);
+
+        logger.info("SHA256WithECDSA Len:\t\t\t" + signedData.length);
+        logger.info("SHA256WithECDSA Signature:\t" + Base64.getEncoder().encodeToString(signedData));
+        logger.info("SHA256WithECDSA Verify:\t\t" + verifyResult);
+    }
+
     protected void signVerifySha256WithRsa() throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
         Signature signature = Signature.getInstance("SHA256WithRSA");
         signature.initSign(rsaPrivateKey);
@@ -185,8 +201,8 @@ public class TestDs2 {
     public static void main(String[] args) throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, NoSuchProviderException, IOException, SignatureException, InvalidKeyException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
         TestDs2 testDs2 = new TestDs2();
         testDs2.init();
-//        logger.info("==========");
-//        testDs2.signRsa();
+        logger.info("==========");
+        testDs2.signVerifySha256Ecdsa();
         logger.info("==========");
         testDs2.signVerifySha256WithRsa();
         logger.info("==========");
