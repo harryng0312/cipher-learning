@@ -36,7 +36,7 @@ public class TestDs {
         if (keyStoreECDSA == null) {
             Security.addProvider(new BouncyCastleProvider());
             keyStoreECDSA = KeyStore.getInstance("PKCS12", "BC");
-            keyStoreECDSA.load(new FileInputStream("key/ks.pfx"), passwd);
+            keyStoreECDSA.load(new FileInputStream("key/ks-ecdsa.pfx"), passwd);
         }
         return keyStoreECDSA;
     }

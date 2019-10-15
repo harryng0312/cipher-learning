@@ -48,7 +48,7 @@ public class TestDs2 {
             Security.addProvider(provider);
 //            Security.insertProviderAt(provider, 1);
             keyStoreECDSA = KeyStore.getInstance("PKCS12", "BC");
-            keyStoreECDSA.load(new FileInputStream("key/ks.pfx"), passwd);
+            keyStoreECDSA.load(new FileInputStream("key/ks-ecdsa.pfx"), passwd);
         }
         return keyStoreECDSA;
     }
@@ -63,6 +63,7 @@ public class TestDs2 {
         }
         return keyStoreRSA;
     }
+
     protected KeyStore getKeyStoreRSAPSS() throws NoSuchProviderException, KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException {
         if (keyStoreRSAPSS == null) {
             Provider provider = new BouncyCastleProvider();
@@ -153,7 +154,7 @@ public class TestDs2 {
     }
 
     protected void signVerifyRsaPss() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, UnsupportedEncodingException, SignatureException {
-        final String alg = "SHA256WithRSA/PSS"; // "RSASSA-PSS";
+        final String alg = "RSASSA-PSS";// "SHA256WithRSA/PSS";
         final MGF1ParameterSpec mgf1ParameterSpec = MGF1ParameterSpec.SHA256;
         final String mgfName = "MGF1";
         final int saltLen = 32;
@@ -162,16 +163,16 @@ public class TestDs2 {
         PSSParameterSpec pssParameterSpec = null;
 
         signature = Signature.getInstance(alg);
-//        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
-//        signature.setParameter(pssParameterSpec);
+        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
+        signature.setParameter(pssParameterSpec);
         signature.initSign(rsaPssPrivateKey);
         byte[] dataToSign = sampleData.getBytes("utf-8");
         signature.update(dataToSign);
         byte[] signedData = signature.sign();
 
         signature = Signature.getInstance(alg);
-//        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
-//        signature.setParameter(pssParameterSpec);
+        pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
+        signature.setParameter(pssParameterSpec);
         signature.initVerify(rsaPssCertificate);
         signature.update(dataToSign);
         boolean verifyResult = signature.verify(signedData);
