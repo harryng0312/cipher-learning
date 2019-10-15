@@ -126,7 +126,7 @@ public class TestDs2 {
         boolean verifyResult = signature.verify(signedData);
 
         logger.info("SHA256WithRSA Len:\t\t\t" + signedData.length);
-        logger.info("SHA256WithRSA Signature:" + Base64.getEncoder().encodeToString(signedData));
+        logger.info("SHA256WithRSA Signature:\t" + Base64.getEncoder().encodeToString(signedData));
         logger.info("SHA256WithRSA Verify:\t\t" + verifyResult);
     }
 
@@ -137,7 +137,7 @@ public class TestDs2 {
         final int saltLen = 32;
         final int trailerField = 1;
         Signature signature = null;
-        AlgorithmParameterSpec pssParameterSpec = null;
+        PSSParameterSpec pssParameterSpec = null;
 
         signature = Signature.getInstance(alg);
         pssParameterSpec = new PSSParameterSpec(mgf1ParameterSpec.getDigestAlgorithm(), mgfName, mgf1ParameterSpec, saltLen, trailerField);
